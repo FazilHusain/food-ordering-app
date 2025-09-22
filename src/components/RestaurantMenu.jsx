@@ -1,27 +1,25 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import ShimmerCard from "./ShimmerCard";
 import { useParams } from "react-router-dom";
-import { MENU_API } from "../utils/constants";
+import useRestaurantMenu from "../utils/useRestaurantMenu";
+
 const RestaurantMenu = () => {
-  const [resInfo, setResInfo] = useState(null);
   const [menuCategories, setMenuCategories] = useState([]);
-  
 
-  const {resId} = useParams();
+  const { resId } = useParams();
+  const resInfo = useRestaurantMenu(resId);
 
-  const fetchMenuData = async () => {
-    try {
-      const data = await fetch(
-        MENU_API + resId
-      );
-      const json = await data.json();
+  // Extract restaurant info safely
+  const infoCard = resInfo?.cards?.find(
+    (c) => c?.card?.card?.info
+  );
+  const { name, cuisines, avgRating, locality } = infoCard?.card?.card?.info || {};
 
-      // Restaurant info
-      setResInfo(json?.data?.cards?.[2]?.card?.card?.info);
-
-      // Extract REGULAR menu categories
+  // Extract REGULAR menu categories
+  useEffect(() => {
+    if (resInfo) {
       const regularCards =
-        json?.data?.cards?.[4]?.groupedCard?.cardGroupMap?.REGULAR?.cards || [];
+        resInfo?.cards?.[4]?.groupedCard?.cardGroupMap?.REGULAR?.cards || [];
 
       const categories = regularCards.filter(
         (c) =>
@@ -30,31 +28,31 @@ const RestaurantMenu = () => {
       );
 
       setMenuCategories(categories);
-    } catch (error) {
-      console.error("Error fetching menu:", error);
     }
-  };
+  }, [resInfo]);
 
-  useEffect(() => {
-    fetchMenuData();
-  }, []);
+  // Loading shimmer
+  if (!resInfo) {
+    return (
+      <div className="shimmer-wrapper">
+        {Array(20)
+          .fill("")
+          .map((_, i) => (
+            <ShimmerCard key={i} />
+          ))}
+      </div>
+    );
+  }
 
-  return resInfo === null ? (
-    <div className="shimmer-wrapper">
-      {Array(20)
-        .fill("")
-        .map((_, i) => (
-          <ShimmerCard key={i} />
-        ))}
-    </div>
-  ) : (
+  // Main UI
+  return (
     <div className="restaurant-menu">
       {/* Restaurant Header */}
       <div className="res-card">
-        <h2>{resInfo?.name}</h2>
-        <h3>{resInfo?.cuisines?.join(", ")}</h3>
-        <h3>{resInfo?.avgRating} ⭐</h3>
-        <p>{resInfo?.locality}</p>
+        <h2>{name}</h2>
+        <h3>{cuisines?.join(", ")}</h3>
+        <h3>{avgRating} ⭐</h3>
+        <p>{locality}</p>
       </div>
 
       {/* Menu Categories + Items */}
